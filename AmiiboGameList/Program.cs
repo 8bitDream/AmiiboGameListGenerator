@@ -207,7 +207,7 @@ public class Program
             Debugger.Log("Error loading Switch games:\n" + ex.Message, Debugger.DebugLevel.Error);
             Environment.Exit((int)Debugger.ReturnType.DatabaseLoadingError);
         }
-        
+
         // Load Switch 2 games
         Debugger.Log("Loading Switch 2 games");
         try
@@ -223,7 +223,7 @@ public class Program
                 Debugger.Log("Error while downloading Switch 2 database, please check internet:\n" + ex.Message, Debugger.DebugLevel.Error);
                 Environment.Exit((int)Debugger.ReturnType.InternetError);
             }
-            
+
             Debugger.Log("Processing Switch 2 database", Debugger.DebugLevel.Verbose);
             XmlSerializer serializer = new(typeof(Switch2Releases));
             using MemoryStream stream = new(NS2Database);
@@ -366,12 +366,26 @@ public class Program
                     {
                         // Fallback
                     }
-                    
-                    games.ForEach(Switch2Games =>
-                        game.gameID.Add(Switch2Games.titleid[..16]));
-                    
+
+                    game.gameID = Games.SwitchGames[game.sanatizedGameName.ToLower()].ToList();
+
+                    if (game.gameID.Count == 0)
+                    {
+                        game.gameID = game.sanatizedGameName switch
+                        {
+                            // 这里可以添加Switch2特定的游戏ID映射
+                             "Donkey Kong Bananza" => new() { "70010000096809" },
+                            _ => throw new Exception()
+                        };
+                    }
+                    else
+                    {
+                        games.ForEach(Switch2Games =>
+                            game.gameID.Add(Switch2Games.titleid[..16]));
+                    }
+
                     game.gameID = game.gameID.Order().Distinct().ToList();
-                    
+
                     lock (ExAmiibo.gamesSwitch2)
                     {
                         ExAmiibo.gamesSwitch2.Add(game);
