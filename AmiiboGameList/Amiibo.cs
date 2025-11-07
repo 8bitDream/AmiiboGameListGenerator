@@ -116,8 +116,13 @@ public class DBAmiibo
                         GameSeriesURL = Regex.Replace(GameSeriesURL, @"[!.]", "");
                         GameSeriesURL = Regex.Replace(GameSeriesURL, @"[' ]", "-");
 
-                        if (GameSeriesURL == "street-fighter-6")
-                            GameSeriesURL = "street-fighter-6-starter-set";
+                        if (GameSeriesURL == "street-fighter-6") {
+                            if (this.BoosterSetAmiiboIds.Contains(this.ID.ToString())) {
+                                GameSeriesURL = "street-fighter-6-booster-pack";
+                            } else {
+                                GameSeriesURL = "street-fighter-6-starter-set";
+                            }
+                        }
 
 						url = $"https://amiibo.life/amiibo/{GameSeriesURL}/{Name.Replace(" ", "-").ToLower()}";
 
@@ -197,6 +202,54 @@ public class DBAmiibo
         {
             string Type = Program.BRootobject.rootobject.types[$"0x{ID.ToString().Substring(8, 2)}"];
             return Type;
+        }
+    }
+    
+    /// <summary>List of Amiibo IDs that match the Street Fighter 6 booster pack (instead of the starter-set)</summary>
+    /// <value>List of IDs.</value>
+    private List<string> BoosterSetAmiiboIds
+    {
+        get {
+            return new List<string> {
+                "0x34d6000104e11d02",
+                "0x3c80000104e81d02",
+                "0x3c81000104f21d02",
+                "0x34d8000104e31d02",
+                "0x34d9000104e41d02",
+                "0x34da000104e51d02",
+                "0x34db000104e61d02",
+                "0x34dc000104e71d02",
+                "0x34c2000104cd1d02",
+                "0x34c3000104ce1d02",
+                "0x34cc000104d71d02",
+                "0x34c4000104cf1d02",
+                "0x34cd000104d81d02",
+                "0x34d0000104db1d02",
+                "0x34ce000104d91d02",
+                "0x34c7000104d21d02",
+                "0x34cb000104d61d02",
+                "0x34d1000104dc1d02",
+                "0x34c0000104cb1d02",
+                "0x34ca000104d51d02",
+                "0x34c8000104d31d02",
+                "0x34c6000104d11d02",
+                "0x34c1000104cc1d02",
+                "0x34c5000104d01d02",
+                "0x34cf000104da1d02",
+                "0x34c9000104d41d02",
+                "0x34d2000104dd1d02",
+                "0x34d3000104de1d02",
+                "0x34d4000104df1d02",
+                "0x34d5000104e01d02",
+                "0x34d6000104eb1d02",
+                "0x3c80000104f11d02",
+                "0x3c81000104f31d02",
+                "0x34d8000104ec1d02",
+                "0x34d9000104ed1d02",
+                "0x34da000104ee1d02",
+                "0x34db000104ef1d02",
+                "0x34dc000104f01d02"
+            };
         }
     }
 }
