@@ -104,6 +104,11 @@ public class DBAmiibo
                     case "solaire of astora":
                         return "https://amiibo.life/amiibo/dark-souls/solaire-of-astora";
 
+                    // My Mario Wooden Blocks series
+                    case var n when n.Contains("my mario wooden blocks"):
+                        string characterName = Name.Replace(" - My Mario Wooden Blocks", "").Replace(" My Mario Wooden Blocks", "");
+                        return $"https://amiibo.life/amiibo/my-mario-wooden-blocks/{characterName.ToLower()}";
+
                     default:
                         string GameSeriesURL = amiiboSeries.ToLower();
 
