@@ -207,6 +207,33 @@ public class Program
             Debugger.Log("Error loading Switch games:\n" + ex.Message, Debugger.DebugLevel.Error);
             Environment.Exit((int)Debugger.ReturnType.DatabaseLoadingError);
         }
+        
+        // Load Switch 2 games
+        Debugger.Log("Loading Switch 2 games");
+        try
+        {
+            byte[] NS2Database = default;
+            try
+            {
+                Debugger.Log("Downloading Switch 2 database", Debugger.DebugLevel.Verbose);
+                NS2Database = Program.client.GetByteArrayAsync("http://ns2db.com/xml.php").Result;
+            }
+            catch (Exception ex)
+            {
+                Debugger.Log("Error while downloading Switch 2 database, please check internet:\n" + ex.Message, Debugger.DebugLevel.Error);
+                Environment.Exit((int)Debugger.ReturnType.InternetError);
+            }
+            
+            Debugger.Log("Processing Switch 2 database", Debugger.DebugLevel.Verbose);
+            XmlSerializer serializer = new(typeof(Switch2Releases));
+            using MemoryStream stream = new(NS2Database);
+            Games.Switch2Games = ((Switch2Releases)serializer.Deserialize(stream)).release.ToList();
+        }
+        catch (Exception ex)
+        {
+            Debugger.Log("Error loading Switch 2 games:\n" + ex.Message, Debugger.DebugLevel.Error);
+            Environment.Exit((int)Debugger.ReturnType.DatabaseLoadingError);
+        }
 
         Debugger.Log("Done loading!");
 
@@ -331,6 +358,33 @@ public class Program
             Regex rgx = new("[^a-zA-Z0-9 -]");
             switch (node.SelectSingleNode(".//*[@class='name']/span").InnerText.Trim().ToLower())
             {
+                case "switch 2":
+                try
+                {
+                    List<Switch2Game> games = Games.Switch2Games.FindAll(Switch2Games => rgx.Replace(WebUtility.HtmlDecode(Switch2Games.name).ToLower(), "").Contains(rgx.Replace(game.gameName.ToLower(), "")));
+                    if (games.Count == 0)
+                    {
+                        // Fallback
+                    }
+                    
+                    games.ForEach(Switch2Games =>
+                        game.gameID.Add(Switch2Games.titleid[..16]));
+                    
+                    game.gameID = game.gameID.Order().Distinct().ToList();
+                    
+                    lock (ExAmiibo.gamesSwitch2)
+                    {
+                        ExAmiibo.gamesSwitch2.Add(game);
+                    }
+                }
+                catch
+                {
+                    lock (Games.missingGames)
+                    {
+                        Games.missingGames.Add(game.gameName + " (Switch 2)");
+                    }
+                }
+                    break;
                 case "switch":
                     try
                     {
@@ -449,6 +503,7 @@ public class Program
         }
 
         // Sort all gamelists
+        ExAmiibo.gamesSwitch2.Sort((x, y) => string.Compare(x.gameName, y.gameName, StringComparison.OrdinalIgnoreCase));
         ExAmiibo.gamesSwitch.Sort((x, y) => string.Compare(x.gameName, y.gameName, StringComparison.OrdinalIgnoreCase));
         ExAmiibo.gamesWiiU.Sort((x, y) => string.Compare(x.gameName, y.gameName, StringComparison.OrdinalIgnoreCase));
         ExAmiibo.games3DS.Sort((x, y) => string.Compare(x.gameName, y.gameName, StringComparison.OrdinalIgnoreCase));
