@@ -52,8 +52,7 @@ public class DBAmiibo
                 "Gakuto Sōgetsu" => "Gakuto Sogetsu",
                 "E.Honda" => "E Honda",
                 "A.K.I" => "A K I",
-                "Bandana Waddle Dee (Kirby Air Riders)" => "Bandana Waddle Dee Warp Star",
-                "Kirby (Kirby Air Riders)" => "Kirby Warp Star",
+                "Bandana Waddle Dee" => "Bandana Waddle Dee Winged Star",
                 _ => OriginalName
             };
 
@@ -97,7 +96,20 @@ public class DBAmiibo
             }
             else
             {
-                // Handle amiibo where gameseries is set to others
+                string GameSeriesURL = amiiboSeries.ToLower();
+                GameSeriesURL = Regex.Replace(GameSeriesURL, @"[!.]", "");
+                GameSeriesURL = Regex.Replace(GameSeriesURL, @"[' ]", "-");
+
+                if (GameSeriesURL == "kirby air riders" && Name.ToLower().Contains("kirby"))
+                {
+                    return "https://amiibo.life/amiibo/kirby-air-riders/kirby-warp-star";
+                }
+
+                if (GameSeriesURL == "kirby air riders" && Name.ToLower().Contains("bandana waddle dee"))
+                {
+                    return "https://amiibo.life/amiibo/kirby-air-riders/bandana-waddle-dee-winged-star";
+                }
+
                 switch (Name.ToLower())
                 {
                     case "super mario cereal":
@@ -206,7 +218,7 @@ public class DBAmiibo
             return Type;
         }
     }
-    
+
     /// <summary>List of Amiibo IDs that match the Street Fighter 6 booster pack (instead of the starter-set)</summary>
     /// <value>List of IDs.</value>
     private List<string> BoosterSetAmiiboIds
