@@ -96,20 +96,7 @@ public class DBAmiibo
             }
             else
             {
-                string GameSeriesURL = amiiboSeries.ToLower();
-                GameSeriesURL = Regex.Replace(GameSeriesURL, @"[!.]", "");
-                GameSeriesURL = Regex.Replace(GameSeriesURL, @"[' ]", "-");
-
-                if (GameSeriesURL == "kirby air riders" && Name.ToLower().Contains("kirby"))
-                {
-                    return "https://amiibo.life/amiibo/kirby-air-riders/kirby-warp-star";
-                }
-
-                if (GameSeriesURL == "kirby air riders" && Name.ToLower().Contains("bandana waddle dee"))
-                {
-                    return "https://amiibo.life/amiibo/kirby-air-riders/bandana-waddle-dee-winged-star";
-                }
-
+                // Handle amiibo where gameseries is set to others
                 switch (Name.ToLower())
                 {
                     case "super mario cereal":
@@ -129,6 +116,16 @@ public class DBAmiibo
                         // Regex to cleanup url
                         GameSeriesURL = Regex.Replace(GameSeriesURL, @"[!.]", "");
                         GameSeriesURL = Regex.Replace(GameSeriesURL, @"[' ]", "-");
+
+                        if (GameSeriesURL == "kirby air riders" && Name.ToLower().Contains("kirby"))
+                        {
+                            return "https://amiibo.life/amiibo/kirby-air-riders/kirby-warp-star";
+                        }
+
+                        if (GameSeriesURL == "kirby air riders" && Name.ToLower().Contains("bandana waddle dee"))
+                        {
+                            return "https://amiibo.life/amiibo/kirby-air-riders/bandana-waddle-dee-winged-star";
+                        }
 
                         if (GameSeriesURL == "street-fighter-6") {
                             if (this.BoosterSetAmiiboIds.Contains(this.ID.ToString())) {
