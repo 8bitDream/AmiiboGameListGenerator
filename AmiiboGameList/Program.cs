@@ -110,7 +110,7 @@ public class Program
                 Debugger.Log("Downloading amiibo database", Debugger.DebugLevel.Verbose);
                 try
                 {
-                    amiiboJSON = Program.client.GetStringAsync("https://raw.githubusercontent.com/N3evin/AmiiboAPI/master/database/amiibo.json").Result;
+                    amiiboJSON = Program.client.GetStringAsync("https://raw.githubusercontent.com/8bitDream/AmiiboAPI/master/database/amiibo.json").Result;
                 }
                 catch (Exception e)
                 {
@@ -381,12 +381,10 @@ public class Program
                     }
                     else
                     {
-                        games.ForEach(Switch2Games =>
-                            game.gameID.Add(Switch2Games.titleid[..16]));
+                        games.ForEach(Switch2Games => game.gameID.Add(Switch2Games.titleid[..16]));
                     }
 
                     game.gameID = game.gameID.Order().Distinct().ToList();
-
                     lock (ExAmiibo.gamesSwitch2)
                     {
                         ExAmiibo.gamesSwitch2.Add(game);
