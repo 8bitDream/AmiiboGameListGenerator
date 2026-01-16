@@ -373,24 +373,11 @@ public class Program
                         // Fallback
                     }
 
-                    game.gameID = Games.SwitchGames[game.sanatizedGameName.ToLower()].ToList();
-
-                    if (game.gameID.Count == 0)
-                    {
-                        game.gameID = game.sanatizedGameName switch
-                        {
-                            // 这里可以添加Switch2特定的游戏ID映射
-                             "Donkey Kong Bananza" => new() { "7001000009680900" },
-                             "Kirby Air Riders" => new() { "7001000010377500" },
-                            _ => throw new Exception()
-                        };
-                    }
-                    else
-                    {
-                        games.ForEach(Switch2Games => game.gameID.Add(Switch2Games.titleid[..16]));
-                    }
+                    games.ForEach(Switch2Games =>
+                        game.gameID.Add(Switch2Games.titleid[..16]));
 
                     game.gameID = game.gameID.Order().Distinct().ToList();
+
                     lock (ExAmiibo.gamesSwitch2)
                     {
                         ExAmiibo.gamesSwitch2.Add(game);
