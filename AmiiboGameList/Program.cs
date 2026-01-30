@@ -312,6 +312,31 @@ public class Program
         }
     }
 
+    /// <summary>
+    /// Sanitizes a string by removing control characters that are invalid in JSON.
+    /// JSON specification allows only \t (U+0009), \n (U+000A), and \r (U+000D) among control characters.
+    /// All other control characters (U+0000 through U+001F) should be removed.
+    /// </summary>
+    private static string SanitizeJsonString(string input)
+    {
+        if (string.IsNullOrEmpty(input))
+        {
+            return input;
+        }
+
+        StringBuilder sb = new StringBuilder(input.Length);
+        foreach (char c in input)
+        {
+            // Keep only valid characters: printable characters and allowed control characters (\t, \n, \r)
+            if (c >= 0x20 || c == '\t' || c == '\n' || c == '\r')
+            {
+                sb.Append(c);
+            }
+            // Skip invalid control characters (U+0000 through U+001F except \t, \n, \r)
+        }
+        return sb.ToString();
+    }
+
     private static Games ParseAmiibo(DBAmiibo DBamiibo)
     {
         Games ExAmiibo = new();
@@ -337,7 +362,7 @@ public class Program
             // Get the name of the game
             Game game = new()
             {
-                gameName = node.SelectSingleNode(".//*[@class='name']/text()[normalize-space()]").InnerText.Trim().Replace("Poochy & ", "").Trim().Replace("Ace Combat Assault Horizon Legacy +", "Ace Combat Assault Horizon Legacy+").Replace("Power Pros", "Jikkyou Powerful Pro Baseball"),
+                gameName = SanitizeJsonString(node.SelectSingleNode(".//*[@class='name']/text()[normalize-space()]").InnerText.Trim().Replace("Poochy & ", "").Trim().Replace("Ace Combat Assault Horizon Legacy +", "Ace Combat Assault Horizon Legacy+").Replace("Power Pros", "Jikkyou Powerful Pro Baseball")),
                 gameID = new(),
                 amiiboUsage = new()
             };
@@ -347,7 +372,7 @@ public class Program
             {
                 game.amiiboUsage.Add(new()
                 {
-                    Usage = amiiboUsage.GetDirectInnerText().Trim(),
+                    Usage = SanitizeJsonString(amiiboUsage.GetDirectInnerText().Trim()),
                     write = amiiboUsage.SelectSingleNode("em")?.InnerText == "(Read+Write)"
                 });
             }
