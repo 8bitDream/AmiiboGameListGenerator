@@ -313,9 +313,9 @@ public class Program
     }
 
     /// <summary>
-    /// Sanitizes a string by removing control characters that are invalid in JSON.
-    /// JSON specification allows only \t (U+0009), \n (U+000A), and \r (U+000D) among control characters.
-    /// All other control characters (U+0000 through U+001F) should be removed.
+    /// Sanitizes a string by removing control characters that are invalid in JSON string values.
+    /// Control characters (U+0000 through U+001F) are not allowed as literal characters inside JSON strings.
+    /// They must be escaped. To avoid issues, we remove all control characters from extracted text.
     /// </summary>
     private static string SanitizeJsonString(string input)
     {
@@ -327,12 +327,12 @@ public class Program
         StringBuilder sb = new StringBuilder(input.Length);
         foreach (char c in input)
         {
-            // Keep only valid characters: printable characters and allowed control characters (\t, \n, \r)
-            if (c >= 0x20 || c == '\t' || c == '\n' || c == '\r')
+            // Keep only printable characters (>= 0x20) 
+            // Remove ALL control characters (0x00-0x1F) including \t, \n, \r
+            if (c >= 0x20)
             {
                 sb.Append(c);
             }
-            // Skip invalid control characters (U+0000 through U+001F except \t, \n, \r)
         }
         return sb.ToString();
     }
