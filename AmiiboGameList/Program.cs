@@ -347,7 +347,7 @@ public class Program
             {
                 game.amiiboUsage.Add(new()
                 {
-                    Usage = amiiboUsage.GetDirectInnerText().Trim(),
+                    Usage = Regex.Replace(amiiboUsage.GetDirectInnerText().Trim(), @"\s+", " "),
                     write = amiiboUsage.SelectSingleNode("em")?.InnerText == "(Read+Write)"
                 });
             }
