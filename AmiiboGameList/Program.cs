@@ -315,7 +315,7 @@ public class Program
     /// <summary>
     /// Sanitizes a string by removing control characters that are invalid in JSON.
     /// JSON specification allows only \t (U+0009), \n (U+000A), and \r (U+000D) among control characters.
-    /// All other control characters (U+0000 through U+001F and U+007F) should be removed.
+    /// All other control characters (U+0000 through U+001F) should be removed.
     /// </summary>
     private static string SanitizeJsonString(string input)
     {
