@@ -52,9 +52,12 @@ public class DBAmiibo
                 "Gakuto Sōgetsu" => "Gakuto Sogetsu",
                 "E.Honda" => "E Honda",
                 "A.K.I" => "A K I",
-                "Bandana Waddle Dee" => "Bandana Waddle Dee Winged Star",
                 _ => OriginalName
             };
+
+            if (ReturnName.Contains(" (& ")) {
+                ReturnName = ReturnName.Replace(" (& ", " ").Replace(")","");
+            }
 
             ReturnName = ReturnName.Replace("Slider", "");
             ReturnName = ReturnName.Replace("R.O.B.", "R O B");
@@ -116,11 +119,6 @@ public class DBAmiibo
                         // Regex to cleanup url
                         GameSeriesURL = Regex.Replace(GameSeriesURL, @"[!.]", "");
                         GameSeriesURL = Regex.Replace(GameSeriesURL, @"[' ]", "-");
-
-                        if (GameSeriesURL == "kirby-air-riders" && Name.ToLower().Contains("kirby"))
-                        {
-                            return "https://amiibo.life/amiibo/kirby-air-riders/kirby-warp-star";
-                        }
 
                         if (GameSeriesURL == "street-fighter-6") {
                             if (this.BoosterSetAmiiboIds.Contains(this.ID.ToString())) {
