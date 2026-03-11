@@ -379,9 +379,9 @@ public class Program
                     {
                         game.gameID = game.sanatizedGameName switch
                         {
-                            // 这里可以添加Switch2特定的游戏ID映射
-                             "Donkey Kong Bananza" => new() { "7001000009680900" },
-                             "Kirby Air Riders" => new() { "7001000010377500" },
+                            // https://switchbrew.org/wiki/Switch_2:_Title_list/Games
+                            "Donkey Kong Bananza" => new() { "040074A01BF12000" },
+                            "Kirby Air Riders" => new() { "040077201BE50000" },
                             _ => throw new Exception()
                         };
                     }
