@@ -45,13 +45,14 @@ public class DBAmiibo
                 "Midna & Wolf Link" => "Wolf Link",
                 "Toon Zelda - The Wind Waker" => "Zelda The Wind Waker",
                 "Rosalina & Luma" => "Rosalina",
-                "Zelda & Loftwing" => "Zelda & Loftwing - Skyward Sword",
+                "Zelda and Loftwing" => "Zelda & Loftwing - Skyward Sword",
                 "Samus (Metroid Dread)" => "Samus",
                 "E.M.M.I." => "E M M I",
                 "Tatsuhisa “Luke” Kamijō" => "Tatsuhisa Luke kamijo",
                 "Gakuto Sōgetsu" => "Gakuto Sogetsu",
                 "E.Honda" => "E Honda",
                 "A.K.I" => "A K I",
+				"Terry Bogard" => "Terry",
                 _ => OriginalName
             };
 
