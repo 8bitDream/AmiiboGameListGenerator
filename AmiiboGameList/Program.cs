@@ -382,6 +382,8 @@ public class Program
                             // https://switchbrew.org/wiki/Switch_2:_Title_list/Games
                             "Donkey Kong Bananza" => new() { "040074A01BF12000" },
                             "Kirby Air Riders" => new() { "040077201BE50000" },
+                            "Mario Kart World" => new() { "0400C3F00006E000" },
+                            "Street Fighter 6" => new() { "040078001CCF6000" },
                             _ => throw new Exception()
                         };
                     }
