@@ -15,6 +15,8 @@ public class Program
     /// A shared HttpClient instance to be used throughout the program.
     /// </summary>
     public static HttpClient client = new();
+    private static readonly SemaphoreSlim amiilifeRequestLock = new(1, 1);
+    private static DateTimeOffset nextAmiilifeRequestAt = DateTimeOffset.MinValue;
 
     /// <summary>
     /// The lazy instance of the AmiiboDataBase
@@ -31,51 +33,104 @@ public class Program
     private static string inputPath;
     private static string outputPath = @"games_info.json";
     private static int parallelism = 4;
+    private static int amiilifeDelayMs = 1500;
+    private static int amiilifeAttempts = 8;
     private static bool allowMissingGames;
     private static readonly Dictionary<Hex, Games> export = new();
 
-    public static async Task<string> GetAmiilifeStringAsync(string url, int attempts = 5)
+    static Program()
     {
-        var handleError = new Func<int, string, Task<bool>>(async (attempt, message) =>
+        client.DefaultRequestHeaders.UserAgent.ParseAdd("AmiiboGameListGenerator/1.4 (+https://github.com/MrKev312/AmiiboGameListGenerator)");
+        client.Timeout = TimeSpan.FromSeconds(60);
+    }
+
+    private static async Task WaitForAmiilifeSlotAsync()
+    {
+        await amiilifeRequestLock.WaitAsync();
+        try
+        {
+            TimeSpan delay = nextAmiilifeRequestAt - DateTimeOffset.UtcNow;
+            if (delay > TimeSpan.Zero)
+            {
+                await Task.Delay(delay);
+            }
+
+            nextAmiilifeRequestAt = DateTimeOffset.UtcNow.AddMilliseconds(amiilifeDelayMs);
+        }
+        finally
+        {
+            amiilifeRequestLock.Release();
+        }
+    }
+
+    private static async Task<string> GetStringWithStatusAsync(string url)
+    {
+        await WaitForAmiilifeSlotAsync();
+
+        using HttpRequestMessage request = new(HttpMethod.Get, url);
+        using HttpResponseMessage response = await client.SendAsync(request);
+        if (response.IsSuccessStatusCode)
+        {
+            return await response.Content.ReadAsStringAsync();
+        }
+
+        TimeSpan? retryAfter = response.Headers.RetryAfter?.Delta
+            ?? (response.Headers.RetryAfter?.Date - DateTimeOffset.UtcNow);
+        HttpRequestException exception = new(
+            $"Response status code does not indicate success: {(int)response.StatusCode} ({response.ReasonPhrase}).",
+            null,
+            response.StatusCode);
+        exception.Data["RetryAfter"] = retryAfter;
+        throw exception;
+    }
+
+    public static async Task<string> GetAmiilifeStringAsync(string url, int? attempts = null)
+    {
+        attempts ??= amiilifeAttempts;
+
+        var handleError = new Func<int, string, HttpRequestException, Task<bool>>(async (attempt, message, httpRequestException) =>
         {
             Debugger.Log(message, Debugger.DebugLevel.Error);
 
-            if (attempt >= (attempts - 1))
+            if (attempt >= (attempts.Value - 1))
             {
                 return true;
             }
 
-            var delay = (attempt + 1) * 5000;
-            Debugger.Log($"Retrying in {delay / 1000} seconds", Debugger.DebugLevel.Verbose);
+            TimeSpan retryAfter = httpRequestException?.Data["RetryAfter"] as TimeSpan? ?? TimeSpan.Zero;
+            TimeSpan backoff = TimeSpan.FromSeconds(Math.Pow(2, attempt + 1) * 5);
+            TimeSpan delay = retryAfter > backoff ? retryAfter : backoff;
+            delay += TimeSpan.FromMilliseconds(Random.Shared.Next(250, 1500));
+
+            Debugger.Log($"Retrying in {delay.TotalSeconds:N0} seconds", Debugger.DebugLevel.Verbose);
             await Task.Delay(delay);
 
             return false;
         });
 
-        // Attempt to load the html up to 5 times when encountering a WebException
-        for (int i = 0; i < attempts; i++)
+        for (int i = 0; i < attempts.Value; i++)
         {
             try
             {
-                return await client.GetStringAsync(url);
+                return await GetStringWithStatusAsync(url);
             }
             catch (WebException ex)
             {
-                if (handleError(i, $"({i + 1}/{attempts}) Error while loading {url}\n{ex.Message}").Result)
+                if (await handleError(i, $"({i + 1}/{attempts}) Error while loading {url}\n{ex.Message}", null))
                 {
                     throw;
                 }
             }
             catch (TaskCanceledException ex) when (ex.InnerException is TimeoutException)
             {
-                if (handleError(i, $"({i + 1}/{attempts}) Timeout error while loading {url}\n{ex.Message}").Result)
+                if (await handleError(i, $"({i + 1}/{attempts}) Timeout error while loading {url}\n{ex.Message}", null))
                 {
                     throw;
                 }
             }
             catch (HttpRequestException ex) when (ex.StatusCode.HasValue && ((int)ex.StatusCode > 499 && (int)ex.StatusCode < 600 || (int)ex.StatusCode == 429))
             {
-                if (handleError(i, $"({i + 1}/{attempts}) HTTP {(int)ex.StatusCode} error while loading {url}\n{ex.Message}").Result)
+                if (await handleError(i, $"({i + 1}/{attempts}) HTTP {(int)ex.StatusCode} error while loading {url}\n{ex.Message}", ex))
                 {
                     throw;
                 }
@@ -547,6 +602,8 @@ public class Program
                 _ = sB.AppendLine("-i | -input {filepath} to specify input json location");
                 _ = sB.AppendLine("-o | -output {filepath} to specify output json location");
                 _ = sB.AppendLine("-p | -parallelism {value} to specify the max degree of parallelism");
+                _ = sB.AppendLine("-amiilife-delay-ms {value} to set the minimum delay between amiibo.life requests, defaults to 1500");
+                _ = sB.AppendLine("-amiilife-attempts {value} to set the number of amiibo.life retry attempts, defaults to 8");
                 _ = sB.AppendLine("-l | -log {value} to set the logging level, can pick from verbose, info, warn, error or from 0 to 3 respectively");
                 _ = sB.AppendLine("-allow-missing to return 0 even if some games are missing titleids");
                 _ = sB.AppendLine("-h | -help to show this message");
@@ -589,6 +646,17 @@ public class Program
                 case "-p":
                 case "-parallelism":
                     parallelism = int.Parse(args[i + 1]);
+                    i++;
+                    continue;
+
+                case "-amiilife-delay-ms":
+                    amiilifeDelayMs = int.Parse(args[i + 1]);
+                    i++;
+                    continue;
+
+                case "-amiilife-attempts":
+                    amiilifeAttempts = int.Parse(args[i + 1]);
+                    i++;
                     continue;
 
                 case "-l":
