@@ -438,6 +438,8 @@ public class Program
                             "Donkey Kong Bananza" => new() { "040074A01BF12000" },
                             "Kirby Air Riders" => new() { "040077201BE50000" },
                             "Mario Kart World" => new() { "0400C3F00006E000" },
+                            "PRAGMATA" => new() { "0400C76024710000" },
+                            "Splatoon Raiders" => new() { "0400380020056000" },
                             "Street Fighter 6" => new() { "040078001CCF6000" },
                             _ => throw new Exception()
                         };
