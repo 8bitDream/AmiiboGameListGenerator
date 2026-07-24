@@ -438,7 +438,9 @@ public class Program
                             "Donkey Kong Bananza" => new() { "040074A01BF12000" },
                             "Kirby Air Riders" => new() { "040077201BE50000" },
                             "Mario Kart World" => new() { "0400C3F00006E000" },
+                            "Monster Hunter Stories 3: Twisted Reflection" => new() { "0400D1E0237CC000" },
                             "PRAGMATA" => new() { "0400C76024710000" },
+                            "Resident Evil Requiem" => new() { "0400A58024718000" },
                             "Splatoon Raiders" => new() { "0400380020056000" },
                             "Street Fighter 6" => new() { "040078001CCF6000" },
                             _ => throw new Exception()
