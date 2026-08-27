@@ -52,7 +52,7 @@ public class DBAmiibo
                 "Gakuto Sōgetsu" => "Gakuto Sogetsu",
                 "E.Honda" => "E Honda",
                 "A.K.I" => "A K I",
-				"Terry Bogard" => "Terry",
+                "Terry Bogard" => "Terry",
                 _ => OriginalName
             };
 

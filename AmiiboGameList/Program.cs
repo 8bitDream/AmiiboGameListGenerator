@@ -11,6 +11,8 @@ namespace AmiiboGameList;
 
 public class Program
 {
+    private const string Switch2TitleListUrl = "https://switchbrew.org/wiki/Switch_2:_Title_list/Games";
+
     /// <summary>
     /// A shared HttpClient instance to be used throughout the program.
     /// </summary>
@@ -144,6 +146,91 @@ public class Program
         throw new Exception("Error occurred in Program.GetAmiilifeStringAsync.  This should never be reached.");
     }
 
+    private static bool IsValidTitleId(string titleId)
+    {
+        return titleId is not null
+            && titleId.Length >= 16
+            && Regex.IsMatch(titleId[..16], "^[0-9A-Fa-f]{16}$", RegexOptions.CultureInvariant);
+    }
+
+    private static List<Switch2Game> ParseSwitchbrewGames(string switchbrewPage)
+    {
+        HtmlDocument htmlDocument = new();
+        htmlDocument.LoadHtml(switchbrewPage);
+
+        List<Switch2Game> games = new();
+        foreach (HtmlNode table in htmlDocument.DocumentNode.SelectNodes("//table") ?? Enumerable.Empty<HtmlNode>())
+        {
+            HtmlNode headerRow = table.SelectSingleNode(".//tr[th]");
+            HtmlNodeCollection headerCells = headerRow?.SelectNodes("./th");
+            if (headerCells is null)
+            {
+                continue;
+            }
+
+            int titleIdColumn = FindColumn(headerCells, "ApplicationId");
+            int nameColumn = FindColumn(headerCells, "Description");
+            int typeColumn = FindColumn(headerCells, "Type");
+            if (titleIdColumn < 0 || nameColumn < 0)
+            {
+                continue;
+            }
+
+            int lastRequiredColumn = Math.Max(titleIdColumn, nameColumn);
+            foreach (HtmlNode row in table.SelectNodes(".//tr[td]") ?? Enumerable.Empty<HtmlNode>())
+            {
+                HtmlNodeCollection cells = row.SelectNodes("./td");
+                if (cells is null || cells.Count <= lastRequiredColumn)
+                {
+                    continue;
+                }
+
+                string titleId = CleanTableCell(cells[titleIdColumn].InnerText);
+                string name = CleanTableCell(cells[nameColumn].InnerText);
+                if (!IsValidTitleId(titleId) || string.IsNullOrWhiteSpace(name))
+                {
+                    continue;
+                }
+
+                if (typeColumn >= 0
+                    && (cells.Count <= typeColumn
+                        || !CleanTableCell(cells[typeColumn].InnerText).Equals("Game", StringComparison.OrdinalIgnoreCase)))
+                {
+                    continue;
+                }
+
+                games.Add(new Switch2Game
+                {
+                    titleid = titleId[..16],
+                    name = name
+                });
+            }
+        }
+
+        return games
+            .GroupBy(game => $"{game.titleid}:{game.name}", StringComparer.OrdinalIgnoreCase)
+            .Select(group => group.First())
+            .ToList();
+    }
+
+    private static int FindColumn(HtmlNodeCollection headerCells, string columnName)
+    {
+        for (int index = 0; index < headerCells.Count; index++)
+        {
+            if (CleanTableCell(headerCells[index].InnerText).Equals(columnName, StringComparison.OrdinalIgnoreCase))
+            {
+                return index;
+            }
+        }
+
+        return -1;
+    }
+
+    private static string CleanTableCell(string value)
+    {
+        return Regex.Replace(WebUtility.HtmlDecode(value ?? string.Empty), @"\s+", " ").Trim();
+    }
+
     /// <summary>
     /// Mains this instance.
     /// </summary>
@@ -266,24 +353,59 @@ public class Program
 
         // Load Switch 2 games
         Debugger.Log("Loading Switch 2 games");
+        Games.Switch2Games = new();
+        List<Switch2Game> ns2Games = new();
+        HashSet<string> ns2TitleIds = new(StringComparer.OrdinalIgnoreCase);
         try
         {
             byte[] NS2Database = default;
             try
             {
-                Debugger.Log("Downloading Switch 2 database", Debugger.DebugLevel.Verbose);
+                Debugger.Log("Downloading NS2 database", Debugger.DebugLevel.Verbose);
                 NS2Database = Program.client.GetByteArrayAsync("http://ns2db.com/xml.php").Result;
             }
             catch (Exception ex)
             {
-                Debugger.Log("Error while downloading Switch 2 database, please check internet:\n" + ex.Message, Debugger.DebugLevel.Error);
-                Environment.Exit((int)Debugger.ReturnType.InternetError);
+                Debugger.Log("Error while downloading NS2 database, please check internet:\n" + ex.Message, Debugger.DebugLevel.Warn);
             }
 
+            if (NS2Database?.Length > 0)
+            {
+                Debugger.Log("Processing NS2 database", Debugger.DebugLevel.Verbose);
+                XmlSerializer serializer = new(typeof(Switch2Releases));
+                using MemoryStream stream = new(NS2Database);
+                ns2Games = ((Switch2Releases)serializer.Deserialize(stream)).release?.ToList() ?? new();
+                ns2TitleIds = ns2Games
+                    .Where(game => IsValidTitleId(game.titleid))
+                    .Select(game => game.titleid[..16])
+                    .ToHashSet(StringComparer.OrdinalIgnoreCase);
+            }
+        }
+        catch (Exception ex)
+        {
+            Debugger.Log("Error loading NS2 database:\n" + ex.Message, Debugger.DebugLevel.Warn);
+        }
+
+        // Load Switch 2 games from Switchbrew and merge with NS2, favoring NS2 records
+        try
+        {
+            Debugger.Log("Downloading Switch 2 database", Debugger.DebugLevel.Verbose);
+            string switchbrewPage = Program.client.GetStringAsync(Switch2TitleListUrl).Result;
+
             Debugger.Log("Processing Switch 2 database", Debugger.DebugLevel.Verbose);
-            XmlSerializer serializer = new(typeof(Switch2Releases));
-            using MemoryStream stream = new(NS2Database);
-            Games.Switch2Games = ((Switch2Releases)serializer.Deserialize(stream)).release.ToList();
+            List<Switch2Game> switchbrewGames = ParseSwitchbrewGames(switchbrewPage);
+            List<Switch2Game> validNs2Games = ns2Games
+                .Where(game => IsValidTitleId(game.titleid))
+                .Select(game => new Switch2Game
+                {
+                    titleid = game.titleid[..16],
+                    name = game.name
+                })
+                .ToList();
+            Games.Switch2Games = validNs2Games
+                .Concat(switchbrewGames
+                    .Where(game => !ns2TitleIds.Contains(game.titleid)))
+                .ToList();
         }
         catch (Exception ex)
         {
@@ -422,33 +544,17 @@ public class Program
                 case "switch 2":
                 try
                 {
-                    List<Switch2Game> games = Games.Switch2Games.FindAll(Switch2Games => rgx.Replace(WebUtility.HtmlDecode(Switch2Games.name).ToLower(), "").Contains(rgx.Replace(game.gameName.ToLower(), "")));
-                    if (games.Count == 0)
-                    {
-                        // Fallback
-                    }
+                    List<Switch2Game> games = Games.Switch2Games.FindAll(Switch2Games =>
+                        IsValidTitleId(Switch2Games.titleid)
+                        && !string.IsNullOrWhiteSpace(Switch2Games.name)
+                        && rgx.Replace(WebUtility.HtmlDecode(Switch2Games.name).ToLower(), "").Contains(rgx.Replace(game.gameName.ToLower(), "")));
 
                     game.gameID = Games.SwitchGames[game.sanatizedGameName.ToLower()].ToList();
+                    games.ForEach(Switch2Games => game.gameID.Add(Switch2Games.titleid[..16]));
 
                     if (game.gameID.Count == 0)
                     {
-                        game.gameID = game.sanatizedGameName switch
-                        {
-                            // https://switchbrew.org/wiki/Switch_2:_Title_list/Games
-                            "Donkey Kong Bananza" => new() { "040074A01BF12000" },
-                            "Kirby Air Riders" => new() { "040077201BE50000" },
-                            "Mario Kart World" => new() { "0400C3F00006E000" },
-                            "Monster Hunter Stories 3: Twisted Reflection" => new() { "0400D1E0237CC000" },
-                            "PRAGMATA" => new() { "0400C76024710000" },
-                            "Resident Evil Requiem" => new() { "0400A58024718000" },
-                            "Splatoon Raiders" => new() { "0400380020056000" },
-                            "Street Fighter 6" => new() { "040078001CCF6000" },
-                            _ => throw new Exception()
-                        };
-                    }
-                    else
-                    {
-                        games.ForEach(Switch2Games => game.gameID.Add(Switch2Games.titleid[..16]));
+                        throw new Exception();
                     }
 
                     game.gameID = game.gameID.Order().Distinct().ToList();
