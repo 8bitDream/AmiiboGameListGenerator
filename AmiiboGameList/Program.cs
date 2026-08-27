@@ -253,7 +253,7 @@ public class Program
                 Debugger.Log("Downloading amiibo database", Debugger.DebugLevel.Verbose);
                 try
                 {
-                    amiiboJSON = Program.client.GetStringAsync("https://raw.githubusercontent.com/8bitDream/AmiiboAPI/master/database/amiibo.json").Result;
+                    amiiboJSON = Program.client.GetStringAsync("https://raw.githubusercontent.com/8bitDream/AmiiboAPI/dev/database/amiibo.json").Result;
                 }
                 catch (Exception e)
                 {
