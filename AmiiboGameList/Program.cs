@@ -501,26 +501,39 @@ public class Program
             )
         );
 
-        // Get the games panel
-        HtmlNodeCollection GamesPanel = htmlDoc.DocumentNode.SelectNodes("//*[@class='games panel']/a");
-        if (GamesPanel.Count == 0)
+        // Get the games panel. SelectNodes returns null when the page has no matches.
+        // This is valid for amiibo with no game entries (and can also happen when
+        // amiibo.life changes the page markup), so treat it as an empty collection.
+        HtmlNodeCollection GamesPanel = htmlDoc.DocumentNode.SelectNodes(
+            "//*[contains(concat(' ', normalize-space(@class), ' '), ' games ') and " +
+            "contains(concat(' ', normalize-space(@class), ' '), ' panel ')]/a");
+        if (GamesPanel is null || GamesPanel.Count == 0)
         {
             Debugger.Log("No games found for " + DBamiibo.Name, Debugger.DebugLevel.Verbose);
+            return ExAmiibo;
         }
 
         // Iterate over each game in the games panel
         foreach (HtmlNode node in GamesPanel)
         {
             // Get the name of the game
+            HtmlNode gameNameNode = node.SelectSingleNode(".//*[contains(concat(' ', normalize-space(@class), ' '), ' name ')]//text()[normalize-space()]");
+            HtmlNode platformNode = node.SelectSingleNode(".//*[contains(concat(' ', normalize-space(@class), ' '), ' name ')]/span");
+            if (gameNameNode is null || platformNode is null)
+            {
+                Debugger.Log("Skipping malformed game entry for " + DBamiibo.Name, Debugger.DebugLevel.Warn);
+                continue;
+            }
+
             Game game = new()
             {
-                gameName = node.SelectSingleNode(".//*[@class='name']/text()[normalize-space()]").InnerText.Trim().Replace("Poochy & ", "").Trim().Replace("Ace Combat Assault Horizon Legacy +", "Ace Combat Assault Horizon Legacy+").Replace("Power Pros", "Jikkyou Powerful Pro Baseball"),
+                gameName = gameNameNode.InnerText.Trim().Replace("Poochy & ", "").Trim().Replace("Ace Combat Assault Horizon Legacy +", "Ace Combat Assault Horizon Legacy+").Replace("Power Pros", "Jikkyou Powerful Pro Baseball"),
                 gameID = new(),
                 amiiboUsage = new()
             };
 
             // Get the amiibo usages
-            foreach (HtmlNode amiiboUsage in node.SelectNodes(".//*[@class='features']/li"))
+            foreach (HtmlNode amiiboUsage in node.SelectNodes(".//*[contains(concat(' ', normalize-space(@class), ' '), ' features ')]/li") ?? Enumerable.Empty<HtmlNode>())
             {
                 game.amiiboUsage.Add(new()
                 {
@@ -539,7 +552,7 @@ public class Program
 
             // Add game to the correct console and get correct titleid
             Regex rgx = new("[^a-zA-Z0-9 -]");
-            switch (node.SelectSingleNode(".//*[@class='name']/span").InnerText.Trim().ToLower())
+            switch (platformNode.InnerText.Trim().ToLower())
             {
                 case "switch 2":
                 try
